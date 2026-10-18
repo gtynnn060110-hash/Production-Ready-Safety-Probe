@@ -1,0 +1,6 @@
+loss:
+  name: plugguard_atc
+  params:
+    anchor_tokens: 10
+    lambda_tv: 0.01
+    lambda_mono: 0.01

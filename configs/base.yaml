@@ -1,0 +1,71 @@
+# Paths are relative to the current working directory. Run from the project root.
+name: baseline
+seed: 42
+output_dir: artifacts
+
+data:
+  train_repo: PKU-Alignment/BeaverTails
+  train_revision: 8401fe609d288129cc684a9b3be6a93e41cfe678
+  source_splits: [330k_train, 330k_test]
+  benchmark_repo: allenai/wildguardmix
+  benchmark_config: wildguardtest
+  benchmark_revision: d29c47f41c8b51348b5c8e8c81c039b3132b66d1
+  benchmark_enabled: true
+  max_samples:  # hard caps applied AFTER the full grouped split; null = keep the full split
+    train: null
+    validation: null
+    beavertails_test: null
+    wildguardtest: null
+  split_seed: 42  # independent of the training seed: all runs share the same data split
+  split_ratios: [0.8, 0.1, 0.1]
+  group_by: prompt
+  label_policy: beavertails_four_heads_v1
+
+features:
+  model: Qwen/Qwen3.5-9B
+  revision: c202236235762e1c871ad0ccb60c8ee5ba337b9a
+  block_indices: [19]  # zero-based; provisional, pending layer pilot
+  tap: block_output_pre_final_norm
+  normalize: rms_no_affine
+  max_length: 4096
+  overflow: drop_training_preserve_test
+  dtype: bfloat16
+  batch_size: 1
+  cache_prompt: true
+  norm_eps: 0.000001
+  shard_tokens: 32768
+  max_cache_gb: 500.0  # preflight stops before loading weights if exceeded
+  device: cuda
+  splits: null  # extract all prepared splits; override to [train, validation] for tuning
+
+probe:
+  name: linear
+  params: {}
+
+loss:
+  name: bce  # uniform token BCE; never sequence BCE in the main matrix
+  params: {}
+
+training:
+  micro_batch_size: 8
+  gradient_accumulation_steps: 4
+  epochs: 2
+  learning_rate: 0.0001
+  weight_decay: 0.01
+  warmup_ratio: 0.05
+  max_grad_norm: 1.0
+  dtype: bfloat16
+  selection_metric: overall_auprc
+  selection_readout: max
+  betas: [0.9, 0.999]
+  device: cuda
+  num_workers: 0
+  log_every: 50
+  resume: true  # epoch-boundary resume; not exact mid-epoch continuation
+
+evaluation:
+  readouts: [last, mean, max]  # any non-empty subset; aggregate logits, then sigmoid
+  targets: [beavertails_test, wildguardtest]
+  threshold_metric: f1  # calibrated on BeaverTails validation only
+  fpr_targets: [0.01, 0.05]
+  batch_size: 8

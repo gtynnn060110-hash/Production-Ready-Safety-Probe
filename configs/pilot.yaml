@@ -1,0 +1,12 @@
+# Overlay after base.yaml; select subsets from the SAME full train/validation split.
+name: pilot
+data:
+  max_samples:
+    train: 8192
+    validation: null  # use the complete fixed validation split (8,106 samples)
+features:
+  splits: [train, validation]  # do not extract or score either test set during tuning
+  max_cache_gb: 20.0  # per single-layer train/validation cache
+training:
+  epochs: 4
+  log_every: 100

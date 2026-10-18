@@ -1,0 +1,15 @@
+# Real Qwen pipeline check, NOT an experiment or a complete OOD evaluation.
+name: smoke
+data:
+  max_samples:
+    train: 74
+    validation: 22
+    beavertails_test: 35
+  benchmark_enabled: false
+features:
+  max_cache_gb: 2.0
+training:
+  epochs: 1
+  log_every: 5
+evaluation:
+  targets: [beavertails_test]

@@ -1,0 +1,6 @@
+loss:
+  name: singprobe_weighted
+  params:
+    temperature: 1.0
+    beta_tau: 0.35
+    detach_weights: true

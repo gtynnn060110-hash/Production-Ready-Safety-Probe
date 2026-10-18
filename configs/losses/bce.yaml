@@ -1,0 +1,3 @@
+loss:
+  name: bce
+  params: {}  # uniform response-token BCE, not sequence BCE

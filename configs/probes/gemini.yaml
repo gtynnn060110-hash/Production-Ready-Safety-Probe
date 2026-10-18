@@ -1,0 +1,7 @@
+probe:
+  name: gemini
+  params:
+    mlp_hidden_sizes: [100, 100]
+    internal_heads: 10
+    window_size: 10
+    partial_prefix_windows: true

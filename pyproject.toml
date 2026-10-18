@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "safety-probe"
+version = "0.1.0"
+description = "Small, staged experiments for hidden-state safety probes"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "torch==2.8.0",
+    "transformers==5.20.1",
+    "datasets==5.1.0",
+    "huggingface-hub==2.2.0",
+    "accelerate==1.15.0",
+    "safetensors>=0.8,<1",
+    "numpy>=2,<3",
+    "scikit-learn>=1.7,<2",
+    "PyYAML>=6,<7",
+    "tqdm>=4.67,<5",
+    "Pillow>=11,<13",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<10", "ruff>=0.12,<1"]
+
+[project.scripts]
+probe = "probe.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]

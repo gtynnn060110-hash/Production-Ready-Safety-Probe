@@ -1,0 +1,9 @@
+probe:
+  name: singprobe
+  params:
+    num_query_heads: 4
+    num_kv_heads: 1
+    head_dim: 64
+    sliding_window: 2048
+    rms_norm_eps: 0.000001
+    init_bias: 0.0
