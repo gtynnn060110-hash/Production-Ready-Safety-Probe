@@ -19,6 +19,7 @@ def run(config: Config, paths: Artifacts) -> None:
         "heads": list(HEADS),
         "mapping": CATEGORY_HEAD,
         "excluded": sorted(EXCLUDED),
+        "aggregation": "per_head_majority_ties_safe_then_filter",
         "implementation": DATA_VERSION,
     }
     with stage_lock(paths.prepared):
@@ -50,6 +51,7 @@ def run(config: Config, paths: Artifacts) -> None:
         ]
         splits, counts = prepare_records(sources, benchmark, config.data)
         full_splits = counts.pop("full_splits")
+        audit = counts.pop("annotation_audit")
         if any(not splits[name] for name in ("train", "validation", "beavertails_test")):
             raise ValueError("Empty full grouped split; inspect source data and split_ratios")
         files = {}
@@ -57,6 +59,9 @@ def run(config: Config, paths: Artifacts) -> None:
             path = paths.prepared / f"{name}.jsonl"
             write_jsonl(path, rows)
             files[path.name] = file_hash(path)
+        audit_path = paths.prepared / "annotations.jsonl"
+        write_jsonl(audit_path, audit)
+        files[audit_path.name] = file_hash(audit_path)
         manifest = {
             "schema": SCHEMA,
             "signature": signature,

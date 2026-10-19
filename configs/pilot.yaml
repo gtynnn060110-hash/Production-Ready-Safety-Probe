@@ -3,7 +3,7 @@ name: pilot
 data:
   max_samples:
     train: 8192
-    validation: null  # use the complete fixed validation split (8,106 samples)
+    validation: null  # use the complete validation split after annotation voting
 features:
   splits: [train, validation]  # do not extract or score either test set during tuning
   max_cache_gb: 20.0  # per single-layer train/validation cache

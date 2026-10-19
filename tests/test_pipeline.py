@@ -157,6 +157,7 @@ def test_prepare_manifest_records_full_and_selected_counts(tiny_pipeline):
     subset_paths = Artifacts.from_config(config)
     subset = read_json(subset_paths.prepared / "manifest.json")
     assert subset["full_splits"] == full["full_splits"]
+    assert subset["files"]["annotations.jsonl"] == full["files"]["annotations.jsonl"]
     assert subset["splits"]["train"]["samples"] == 13
     assert subset["splits"]["validation"]["samples"] == 7
     assert subset["splits"]["beavertails_test"] == full["splits"]["beavertails_test"]
@@ -167,6 +168,33 @@ def test_prepare_manifest_records_full_and_selected_counts(tiny_pipeline):
         actual_ids = {r["id"] for r in read_jsonl(subset_paths.prepared / f"{split}.jsonl")}
         full_ids = {r["id"] for r in read_jsonl(full_paths.prepared / f"{split}.jsonl")}
         assert actual_ids <= full_ids
+
+
+def test_prepare_saves_checked_vote_audit_separately_from_training_rows(tiny_pipeline):
+    from probe.io import read_jsonl
+
+    config, _ = tiny_pipeline
+    run("prepare", config)
+    paths = Artifacts.from_config(config)
+    manifest = checked_manifest(paths.prepared / "manifest.json")
+    assert manifest["signature"]["aggregation"] == "per_head_majority_ties_safe_then_filter"
+    assert "annotations.jsonl" in manifest["files"]
+    audit = list(read_jsonl(paths.prepared / "annotations.jsonl"))
+    # Tiny loader returns the same 100 annotations for both source splits.
+    assert len(audit) == 100
+    assert all(row["annotation_count"] == 2 for row in audit)
+    rows = [
+        row
+        for split in ["train", "validation", "beavertails_test"]
+        for row in read_jsonl(paths.prepared / f"{split}.jsonl")
+    ]
+    assert {row["id"] for row in rows} == {row["id"] for row in audit}
+    assert all(set(row) == {"id", "prompt", "response", "labels", "label_mask"} for row in rows)
+    run("prepare", config)  # complete, checked artifact reuse
+    with (paths.prepared / "annotations.jsonl").open("a") as stream:
+        stream.write("corrupt\n")
+    with pytest.raises(ValueError, match="checksum"):
+        run("prepare", config)
 
 
 def test_train_validation_only_extraction_never_runs_test_forward(tiny_pipeline):

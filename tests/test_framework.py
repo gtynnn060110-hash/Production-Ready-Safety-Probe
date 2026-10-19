@@ -148,3 +148,12 @@ def test_old_pre_split_cap_artifacts_are_not_reused():
     config = load_config([BASE], ["data.max_samples=512"])
     old_data_key = _key({"data": asdict(config.data), "heads": HEADS})
     assert Artifacts.from_config(config).prepared.name != old_data_key
+
+
+def test_old_unanimous_label_caches_are_not_reused():
+    from probe.artifacts import _key
+    from probe.contracts import HEADS
+
+    config = load_config([BASE])
+    old_key = _key({"data": asdict(config.data), "heads": HEADS, "version": 2})
+    assert Artifacts.from_config(config).prepared.name != old_key

@@ -8,7 +8,7 @@ from pathlib import Path
 from .config import Config
 from .contracts import HEADS
 
-DATA_VERSION = 2  # full grouped split first, then hard-capped per-split subsets
+DATA_VERSION = 3  # per-head annotation majority (ties safe), then filtering/grouped splitting
 
 
 def _key(value: dict) -> str:
