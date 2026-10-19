@@ -1,0 +1,17 @@
+# Tuned combination; load AFTER configs/base.yaml, without pilot.yaml.
+name: full_linear_weighted
+data:
+  max_samples: null
+features:
+  splits: null
+probe:
+  name: linear
+  params: {}
+loss:
+  name: singprobe_weighted
+  params:
+    temperature: 0.1
+    beta_tau: 0.35
+    detach_weights: true
+training:
+  learning_rate: 0.0003

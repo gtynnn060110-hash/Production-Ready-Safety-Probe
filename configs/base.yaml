@@ -24,7 +24,7 @@ data:
 features:
   model: Qwen/Qwen3.5-9B
   revision: c202236235762e1c871ad0ccb60c8ee5ba337b9a
-  block_indices: [19]  # zero-based; provisional, pending layer pilot
+  block_indices: [15]  # zero-based; shared layer selected by the validation-only pilot
   tap: block_output_pre_final_norm
   normalize: rms_no_affine
   max_length: 4096
@@ -49,7 +49,7 @@ loss:
 training:
   micro_batch_size: 8
   gradient_accumulation_steps: 4
-  epochs: 2
+  epochs: 4  # training budget, not a claimed optimum; select best checkpoint on validation
   learning_rate: 0.0001
   weight_decay: 0.01
   warmup_ratio: 0.05

@@ -1,0 +1,23 @@
+# Tuned combination; load AFTER configs/base.yaml, without pilot.yaml.
+name: full_singprobe_weighted
+data:
+  max_samples: null
+features:
+  splits: null
+probe:
+  name: singprobe
+  params:
+    num_query_heads: 4
+    num_kv_heads: 1
+    head_dim: 64
+    sliding_window: 64
+    rms_norm_eps: 0.000001
+    init_bias: 0.0
+loss:
+  name: singprobe_weighted
+  params:
+    temperature: 0.1
+    beta_tau: 0.35
+    detach_weights: true
+training:
+  learning_rate: 0.0003

@@ -79,7 +79,7 @@ def test_unknown_yaml_key_is_rejected(tmp_path):
 def test_artifact_reuse_and_invalidation():
     base = Artifacts.from_config(load_config([BASE]))
     different_loss = Artifacts.from_config(load_config([BASE], ["loss.name=singprobe_weighted"]))
-    different_layer = Artifacts.from_config(load_config([BASE], ["features.block_indices=[15]"]))
+    different_layer = Artifacts.from_config(load_config([BASE], ["features.block_indices=[19]"]))
     different_readout = Artifacts.from_config(load_config([BASE], ["evaluation.readouts=[last]"]))
     different_seed = Artifacts.from_config(load_config([BASE], ["seed=43"]))
     assert base.prepared == different_loss.prepared

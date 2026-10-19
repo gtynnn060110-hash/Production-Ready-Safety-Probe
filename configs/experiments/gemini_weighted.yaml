@@ -1,0 +1,21 @@
+# Tuned combination; load AFTER configs/base.yaml, without pilot.yaml.
+name: full_gemini_weighted
+data:
+  max_samples: null
+features:
+  splits: null
+probe:
+  name: gemini
+  params:
+    mlp_hidden_sizes: [100, 100]
+    internal_heads: 10
+    window_size: 40
+    partial_prefix_windows: true
+loss:
+  name: singprobe_weighted
+  params:
+    temperature: 0.1
+    beta_tau: 0.35
+    detach_weights: true
+training:
+  learning_rate: 0.0003
