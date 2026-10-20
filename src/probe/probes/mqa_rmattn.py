@@ -19,7 +19,7 @@ class MQARMAttnProbe(nn.Module):
         self,
         input_dim: int,
         num_heads: int,
-        context_window: int = 256,
+        context_window: int = 0,
         risk_window: int = 20,
         num_query_heads: int = 4,
         num_kv_heads: int = 1,

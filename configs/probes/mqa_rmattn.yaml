@@ -2,7 +2,7 @@
 probe:
   name: mqa_rmattn
   params:
-    context_window: 256
+    context_window: 0  # full causal history; fixed, not a search axis
     risk_window: 20
     num_query_heads: 4
     num_kv_heads: 1

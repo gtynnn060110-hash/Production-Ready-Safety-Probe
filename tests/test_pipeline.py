@@ -403,7 +403,7 @@ def test_validation_only_search_completes_and_reuses_trials(tiny_pipeline, monke
 
     monkeypatch.setattr(FeatureDataset, "__init__", track)
     job = paths.prepared.parent / "search"
-    args = ["--config", str(config_path), "--context-windows", "2", "--risk-windows", "3",
+    args = ["--config", str(config_path), "--risk-windows", "3",
             "--learning-rates", "0.001", "--train-samples", "16", "--cache-device", "cpu",
             "--output", str(job)]
     assert main(args) == 0
@@ -413,7 +413,7 @@ def test_validation_only_search_completes_and_reuses_trials(tiny_pipeline, monke
     assert summary["protocol"]["membership"]["train"]["samples"] == 16
     assert set(opened) == {"train", "validation"}
     best = load_config([job / "best_config.yaml"])
-    assert best.probe.params["context_window"] == 2
+    assert best.probe.params["context_window"] == 0
     assert best.probe.params["risk_window"] == 3
     result_file = Path(summary["best"]["run_dir"]) / "result.json"
     previous = result_file.read_bytes()

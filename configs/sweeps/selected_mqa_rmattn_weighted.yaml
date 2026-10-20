@@ -1,3 +1,5 @@
+# Historical windowed pilot only; the current recipe fixes MQA to full history.
+# Use configs/runs/mqa_rmattn_full_fpr5.yaml for the current full-data recipe.
 # Selected by 27 validation-only trials: 8192 training samples, full validation,
 # 4 epochs, seed 42. Load AFTER base.yaml for a fresh full-data training run.
 # The sweep checkpoint itself was trained only on the fixed training subset.

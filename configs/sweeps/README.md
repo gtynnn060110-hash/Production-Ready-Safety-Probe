@@ -4,7 +4,7 @@
 256 维逐 token 表示 → 两层 MLP（100、100）→ 回答内 RMAttn → 五维局部 logits。
 第一层不经过分类器，也不在中间做时间池化。
 
-- 第一层窗口 `context_window` 控制 MQA 可直接读取的历史范围，允许读取 prompt。
+- 第一层 MQA 固定 `context_window=0`，读取所有历史位置（含 prompt），保持因果；不扫描窗口。
 - 第二层窗口 `risk_window` 只汇聚同一连续回答区间；开头不足窗口时使用已有前缀。
 - 每个类别使用 10 个固定、可训练的 query/value heads；每个位置先合并内部 heads，
   最后按现有协议独立进行 Max / Mean / Last 读出。这是 token-loss 适配，
@@ -15,14 +15,14 @@
 从项目根目录执行：
 
 ```bash
-python -m probe.sweep --output artifacts/sweeps/mqa_rmattn_weighted_seed42
+python -m probe.sweep --output artifacts/sweeps/mqa_full_rmattn_weighted_seed42
 ```
 
-默认扫描共 27 组：
+默认扫描共 9 组：
 
 | 参数 | 候选 |
 | --- | --- |
-| MQA 窗口 | 64、256、2048 |
+| MQA 上下文（固定） | 全部历史，`context_window=0`，不参与扫描 |
 | RMAttn 窗口 | 10、20、40 |
 | 学习率 | 5e-5、1e-4、3e-4 |
 | Loss | Weighted，temperature=0.1、beta_tau=0.35、detach=true |
@@ -53,13 +53,16 @@ python -m probe.sweep --output artifacts/sweeps/mqa_rmattn_weighted_seed42
 选型结束后，如需完整训练与评测：
 
 ```bash
-python -m probe train --config artifacts/sweeps/mqa_rmattn_weighted_seed42/best_config.yaml
-python -m probe evaluate --config artifacts/sweeps/mqa_rmattn_weighted_seed42/best_config.yaml
+python -m probe train --config artifacts/sweeps/mqa_full_rmattn_weighted_seed42/best_config.yaml
+python -m probe evaluate --config artifacts/sweeps/mqa_full_rmattn_weighted_seed42/best_config.yaml
 ```
 
 验证集扫描分数不应与 README 中完整训练后的 ID/OOD 测试分数直接比较。
 
-## 首次扫描结果
+## 历史：首次窗口扫描结果
+
+以下保留旧版 27 组扫描记录。当前方案已将 MQA 固定为全部历史；
+这些窗口对比不再属于当前搜索空间，也不能替代固定全量 MQA 后的扫描。
 
 27 组全部完成。选中 **MQA 窗口 64、RMAttn 窗口 40、LR=1e-4**，最佳 checkpoint
 为第 4 轮，验证集 Overall Max AP 为 **94.6991%**，F1 为 **87.4426%**。
@@ -78,10 +81,10 @@ F1 阈值由同一验证集校准，作为诊断；配置选择依据 AP。
 
 - [27 组完整报告](../../artifacts/sweeps/mqa_rmattn_weighted_seed42/report.md)
 - [全部指标与排名](../../artifacts/sweeps/mqa_rmattn_weighted_seed42/summary.json)
-- [选中配置 overlay](selected_mqa_rmattn_weighted.yaml)
+- [历史选中配置 overlay](selected_mqa_rmattn_weighted.yaml)
 
-使用已保存的选型结果进行完整训练：
+当前完整训练配置使用全量 MQA、RMAttn 窗口 40，FPR 5% 校准：
 
 ```bash
-python -m probe train --config configs/base.yaml --config configs/sweeps/selected_mqa_rmattn_weighted.yaml
+python -m probe train --config configs/base.yaml --config configs/runs/mqa_rmattn_full_fpr5.yaml
 ```

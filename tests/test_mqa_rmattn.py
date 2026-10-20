@@ -113,11 +113,14 @@ def test_search_axes_are_independent_and_keep_source_cache():
         root / "configs/base.yaml", root / "configs/probes/mqa_rmattn.yaml",
         root / "configs/sweeps/mqa_rmattn_weighted.yaml",
     ])
-    candidates = list(trial_configs(config, [64, 256, 2048], [10, 20, 40], [5e-5, 1e-4, 3e-4]))
-    assert len(candidates) == 27
-    assert len({c.name for c in candidates}) == 27
+    # Historical config cannot reintroduce a search axis.
+    config.probe.params["context_window"] = 64
+    candidates = list(trial_configs(config, [10, 20, 40], [5e-5, 1e-4, 3e-4]))
+    assert len(candidates) == 9
+    assert len({c.name for c in candidates}) == 9
+    assert all(c.probe.params["context_window"] == 0 for c in candidates)
     assert len({Artifacts.from_config(c).features for c in candidates}) == 1
-    assert config.probe.params["context_window"] == 256
+    assert config.probe.params["context_window"] == 64
     assert config.probe.params["risk_window"] == 20
 
 

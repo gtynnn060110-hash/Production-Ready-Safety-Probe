@@ -1,4 +1,4 @@
-"""Validation-only window/LR search using an existing, verified feature cache.
+"""Validation-only risk-window/LR search with fixed full-history causal MQA.
 
 Run from the repository root: python -m probe.sweep --help
 Training uses the same optimizer, schedule, microbatches and epoch selection as
@@ -108,12 +108,12 @@ def resident_loader(datasets):
     return make_loader
 
 
-def trial_configs(base, context_windows, risk_windows, learning_rates):
-    for context, risk, lr in itertools.product(context_windows, risk_windows, learning_rates):
+def trial_configs(base, risk_windows, learning_rates):
+    for risk, lr in itertools.product(risk_windows, learning_rates):
         config = copy.deepcopy(base)
-        config.probe.params.update(context_window=context, risk_window=risk)
+        config.probe.params.update(context_window=0, risk_window=risk)
         config.training.learning_rate = lr
-        config.name = f"mqa{context}_risk{risk}_lr{lr:g}_seed{config.seed}"
+        config.name = f"mqa0_risk{risk}_lr{lr:g}_seed{config.seed}"
         config.validate()
         # Constructor validation catches invalid component settings before a long search.
         build_probe(config.probe, input_dim=8, num_heads=len(HEADS))
@@ -183,12 +183,13 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path, action="append")
     parser.add_argument("--set", dest="overrides", action="append")
-    parser.add_argument("--context-windows", type=int, nargs="+", default=[64, 256, 2048])
     parser.add_argument("--risk-windows", type=int, nargs="+", default=[10, 20, 40])
     parser.add_argument("--learning-rates", type=float, nargs="+", default=[5e-5, 1e-4, 3e-4])
     parser.add_argument("--train-samples", type=int, default=8192)
     parser.add_argument("--cache-device", choices=["cpu", "cuda"], default="cuda")
-    parser.add_argument("--output", type=Path, default=Path("artifacts/sweeps/mqa_rmattn_weighted"))
+    parser.add_argument(
+        "--output", type=Path, default=Path("artifacts/sweeps/mqa_full_rmattn_weighted")
+    )
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     torch.set_num_threads(4)
@@ -198,13 +199,12 @@ def main(argv=None):
     ], args.overrides)
     if config.probe.name != "mqa_rmattn":
         raise ValueError("This search is for the mqa_rmattn probe")
+    config.probe.params["context_window"] = 0
     if args.train_samples < config.training.micro_batch_size:
         raise ValueError("Training subset must contain at least one microbatch")
     if config.training.selection_readout != "max":
         raise ValueError("This search selects checkpoints and trials using the max readout")
-    candidates = list(trial_configs(
-        config, args.context_windows, args.risk_windows, args.learning_rates
-    ))
+    candidates = list(trial_configs(config, args.risk_windows, args.learning_rates))
     if len({c.name for c in candidates}) != len(candidates):
         raise ValueError("Search axes must not contain duplicate candidates")
     paths = Artifacts.from_config(config)
