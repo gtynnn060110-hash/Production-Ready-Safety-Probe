@@ -10,4 +10,3 @@ artifacts/
 .env
 references/
 docs/
-*.md
