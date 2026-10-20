@@ -1,0 +1,14 @@
+# Context encoder -> local risk pooling. No intermediate five-class bottleneck.
+probe:
+  name: mqa_rmattn
+  params:
+    context_window: 256
+    risk_window: 20
+    num_query_heads: 4
+    num_kv_heads: 1
+    head_dim: 64
+    rms_norm_eps: 0.000001
+    attention_chunk_size: 256
+    mlp_hidden_sizes: [100, 100]
+    internal_heads: 10
+    partial_prefix_windows: true

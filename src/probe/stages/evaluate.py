@@ -40,6 +40,11 @@ def run(config: Config, paths: Artifacts) -> None:
         model.load_state_dict(state["model"])
         model.to(config.training.device)
         readouts = config.evaluation.readouts
+        primary_fpr = (
+            config.evaluation.fpr_targets[0]
+            if config.evaluation.threshold_metric == "fpr"
+            else None
+        )
         val = predict(
             model, loader(config, paths, manifest, "validation"), config, manifest, readouts
         )
@@ -57,6 +62,10 @@ def run(config: Config, paths: Artifacts) -> None:
                 "feature_manifest_sha256": signature["feature_manifest_hash"],
                 "checkpoint_epoch": state["epoch"] + 1,
                 "threshold_source": "BeaverTails validation only; thresholds in logits",
+                "primary_threshold_rule": {
+                    "metric": config.evaluation.threshold_metric,
+                    "fpr_target": primary_fpr,
+                },
                 "thresholds": thresholds[mode],
                 "splits": {},
             }
@@ -70,7 +79,8 @@ def run(config: Config, paths: Artifacts) -> None:
             )
             for mode in readouts:
                 results[mode]["splits"][split] = evaluate_scores(
-                    data["labels"], data["label_mask"], data["scores"][mode], thresholds[mode]
+                    data["labels"], data["label_mask"], data["scores"][mode], thresholds[mode],
+                    threshold_metric=config.evaluation.threshold_metric, fpr_target=primary_fpr,
                 )
                 save_predictions(
                     paths.run / "evaluation" / "predictions" / f"{split}-{mode}.jsonl", data, mode

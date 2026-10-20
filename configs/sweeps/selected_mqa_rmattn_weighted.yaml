@@ -1,0 +1,31 @@
+# Selected by 27 validation-only trials: 8192 training samples, full validation,
+# 4 epochs, seed 42. Load AFTER base.yaml for a fresh full-data training run.
+# The sweep checkpoint itself was trained only on the fixed training subset.
+name: selected_mqa_rmattn_weighted
+data:
+  max_samples: null
+features:
+  splits: null
+probe:
+  name: mqa_rmattn
+  params:
+    context_window: 64
+    risk_window: 40
+    num_query_heads: 4
+    num_kv_heads: 1
+    head_dim: 64
+    rms_norm_eps: 0.000001
+    attention_chunk_size: 256
+    mlp_hidden_sizes: [100, 100]
+    internal_heads: 10
+    partial_prefix_windows: true
+loss:
+  name: singprobe_weighted
+  params:
+    temperature: 0.1
+    beta_tau: 0.35
+    detach_weights: true
+training:
+  learning_rate: 0.0001
+  epochs: 4
+  log_every: 1000

@@ -34,7 +34,7 @@ def autocast(config):
     return torch.autocast(torch.device(config.training.device).type, dtype=torch.bfloat16)
 
 
-def feature_manifest(config, paths):
+def feature_manifest(config, paths, splits=None):
     prepared = checked_manifest(paths.prepared / "manifest.json")
     manifest = checked_manifest(paths.features / "manifest.json")
     signature = manifest["signature"]
@@ -44,7 +44,9 @@ def feature_manifest(config, paths):
         raise ValueError("Prepared data changed since extraction")
     if prepared["signature"]["data"] != asdict(config.data):
         raise ValueError("Prepared data does not match requested data configuration")
-    for info in manifest["splits"].values():
+    selected = manifest["splits"] if splits is None else splits
+    for split in selected:
+        info = manifest["splits"][split]
         for shard in info["shards"]:
             marker = paths.features / shard["tensor"].replace(".safetensors", ".manifest.json")
             checked_manifest(marker, signature)

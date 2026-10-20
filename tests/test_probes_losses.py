@@ -23,10 +23,12 @@ def batch(x, response=None, attention=None):
     )
 
 
-@pytest.mark.parametrize("probe", ["linear", "singprobe", "gemini"])
+@pytest.mark.parametrize("probe", ["linear", "singprobe", "gemini", "mqa_rmattn"])
 def test_causality_and_padding(probe):
     torch.manual_seed(42)
     params = {"sliding_window": 3, "attention_chunk_size": 2} if probe == "singprobe" else {}
+    if probe == "mqa_rmattn":
+        params = {"context_window": 3, "risk_window": 3, "attention_chunk_size": 2}
     model = build_probe(ComponentConfig(probe, params), input_dim=8, num_heads=5).eval()
     x = torch.randn(1, 9, 8)
     mask = torch.tensor([[False, False] + [True] * 7])
@@ -80,7 +82,7 @@ def test_gemini_window_one_is_pointwise_value():
     torch.testing.assert_close(model(batch(x)).local_logits, model.value(model.mlp(x)) + model.bias)
 
 
-@pytest.mark.parametrize("probe", ["linear", "singprobe", "gemini"])
+@pytest.mark.parametrize("probe", ["linear", "singprobe", "gemini", "mqa_rmattn"])
 @pytest.mark.parametrize("loss", ["bce", "singprobe_weighted", "plugguard_atc"])
 def test_all_nine_combinations_have_finite_gradients(probe, loss):
     model = build_probe(ComponentConfig(probe), input_dim=8, num_heads=5)

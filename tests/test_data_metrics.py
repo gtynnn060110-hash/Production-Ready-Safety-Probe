@@ -284,6 +284,24 @@ def test_fpr_calibration_is_conservative_with_ties():
         assert binary_metrics(y, z, threshold)["fpr"] <= f
 
 
+def test_primary_fpr_metrics_use_fpr_threshold_instead_of_f1_threshold():
+    labels = np.repeat(np.array([0] * 20 + [1] * 2)[:, None], 5, axis=1)
+    scores = np.repeat(np.arange(22, dtype=float)[:, None], 5, axis=1)
+    mask = np.ones_like(labels, dtype=bool)
+    thresholds = calibrate(labels, mask, scores, [0.05])
+    default = evaluate_scores(labels, mask, scores, thresholds)
+    primary = evaluate_scores(
+        labels, mask, scores, thresholds, threshold_metric="fpr", fpr_target=0.05
+    )
+    assert default["overall"]["fpr"] == 0
+    assert primary["overall"]["fpr"] == 0.05
+    assert primary["overall"]["threshold_logit"] == thresholds["overall"]["fpr"]["0.05"]
+    assert primary["overall"]["f1"] == 0.8
+    assert primary["overall"]["auprc"] == default["overall"]["auprc"]
+    for key, value in primary["overall"]["at_validation_fpr"]["0.05"].items():
+        assert primary["overall"][key] == value
+
+
 def test_unknown_heads_and_single_class_are_explicitly_unavailable():
     labels = np.zeros((3, 5))
     mask = np.zeros((3, 5), dtype=bool)

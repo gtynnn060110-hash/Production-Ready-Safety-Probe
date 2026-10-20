@@ -158,7 +158,7 @@ class Config:
             or len(set(readouts)) != len(readouts)
         ):
             raise ValueError("evaluation.readouts must be a non-empty subset of [last, mean, max]")
-        if self.probe.name not in {"linear", "singprobe", "gemini"}:
+        if self.probe.name not in {"linear", "singprobe", "gemini", "mqa_rmattn"}:
             raise ValueError(f"Unknown probe: {self.probe.name}")
         if self.loss.name not in {"bce", "singprobe_weighted", "plugguard_atc"}:
             raise ValueError(f"Unknown loss: {self.loss.name}")
@@ -232,8 +232,8 @@ class Config:
             raise ValueError("Only overall_auprc checkpoint selection is implemented")
         if self.training.selection_readout not in {"last", "mean", "max"}:
             raise ValueError("Invalid training.selection_readout")
-        if self.evaluation.threshold_metric != "f1":
-            raise ValueError("Only validation max-F1 threshold selection is implemented")
+        if self.evaluation.threshold_metric not in {"f1", "fpr"}:
+            raise ValueError("evaluation.threshold_metric must be f1 or fpr")
         if (
             not isinstance(self.training.betas, list)
             or len(self.training.betas) != 2
@@ -252,6 +252,10 @@ class Config:
             type(f) not in (int, float) or not 0 < f < 1 for f in self.evaluation.fpr_targets
         ):
             raise ValueError("evaluation.fpr_targets must be between 0 and 1")
+        if self.evaluation.threshold_metric == "fpr" and len(self.evaluation.fpr_targets) != 1:
+            raise ValueError(
+                "FPR threshold selection requires exactly one evaluation.fpr_targets value"
+            )
 
 
 T = TypeVar("T")

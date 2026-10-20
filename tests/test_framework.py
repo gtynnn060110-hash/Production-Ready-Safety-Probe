@@ -62,6 +62,8 @@ def test_changing_probe_does_not_leak_old_parameters():
         "features.splits=[train, train]",
         "features.splits=[typo]",
         "features.splits=train",
+        "evaluation.threshold_metric=unknown",
+        "evaluation.threshold_metric=fpr",  # base has two FPR targets; primary is ambiguous
     ],
 )
 def test_invalid_configuration_is_rejected(override):
@@ -127,6 +129,17 @@ def test_yaml_round_trip(tmp_path):
     path = tmp_path / "resolved.yaml"
     path.write_text(yaml.safe_dump(asdict(config)))
     assert load_config([path]) == config
+
+
+def test_full_mqa_fpr_run_uses_full_causal_context_and_one_primary_target():
+    config = load_config([BASE, ROOT / "configs/runs/mqa_rmattn_full_fpr5.yaml"])
+    assert config.probe.name == "mqa_rmattn"
+    assert config.probe.params["context_window"] == 0
+    assert config.probe.params["risk_window"] == 40
+    assert config.data.max_samples is None
+    assert config.evaluation.threshold_metric == "fpr"
+    assert config.evaluation.fpr_targets == [0.05]
+    assert config.evaluation.readouts == ["max"]
 
 
 def test_per_split_limit_overlays_and_cli_overrides():

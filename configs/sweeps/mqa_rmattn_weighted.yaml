@@ -1,0 +1,15 @@
+# Load after base.yaml and probes/mqa_rmattn.yaml. The sweep runner selects a
+# deterministic training subset from the existing full cache; no new extraction.
+name: sweep_mqa_rmattn_weighted
+data:
+  max_samples: null  # match the existing full-data cache; subsetting happens in the loader
+loss:
+  name: singprobe_weighted
+  params:
+    temperature: 0.1
+    beta_tau: 0.35
+    detach_weights: true
+training:
+  learning_rate: 0.0003
+  epochs: 4
+  log_every: 1000

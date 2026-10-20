@@ -85,12 +85,23 @@ def binary_metrics(y, score, threshold):
     }
 
 
-def evaluate_scores(labels, label_mask, scores, thresholds):
+def evaluate_scores(
+    labels, label_mask, scores, thresholds, *, threshold_metric="f1", fpr_target=None
+):
+    if threshold_metric not in {"f1", "fpr"}:
+        raise ValueError("Unknown primary threshold metric")
+    if threshold_metric == "fpr" and fpr_target is None:
+        raise ValueError("FPR evaluation requires a target")
     result = {}
     for c, head in enumerate(HEADS):
         valid = label_mask[:, c].astype(bool)
         y, z = labels[valid, c], scores[valid, c]
-        result[head] = binary_metrics(y, z, thresholds[head]["f1"])
+        threshold = (
+            thresholds[head]["f1"]
+            if threshold_metric == "f1"
+            else thresholds[head]["fpr"][str(fpr_target)]
+        )
+        result[head] = binary_metrics(y, z, threshold)
         result[head]["at_validation_fpr"] = {
             target: binary_metrics(y, z, threshold)
             for target, threshold in thresholds[head]["fpr"].items()

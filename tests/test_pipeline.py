@@ -229,7 +229,7 @@ def test_missing_requested_feature_split_is_rejected(tiny_pipeline):
         )
 
 
-@pytest.mark.parametrize("probe", ["linear", "singprobe", "gemini"])
+@pytest.mark.parametrize("probe", ["linear", "singprobe", "gemini", "mqa_rmattn"])
 @pytest.mark.parametrize("loss", ["bce", "singprobe_weighted", "plugguard_atc"])
 def test_four_stages_all_nine_combinations(tiny_pipeline, probe, loss):
     config, text = tiny_pipeline
@@ -355,3 +355,112 @@ def test_extraction_keeps_validation_and_test_overlength_samples(tmp_path):
     assert stats["train"]["dropped_overlength"] == 1
     assert stats["validation"]["samples"] == stats["beavertails_test"]["samples"] == 2
     assert len(list(read_jsonl(paths.features / "tokens/validation.jsonl"))) == 2
+
+
+def test_resident_search_data_matches_cached_features_and_rejects_test(tiny_pipeline):
+    from probe.features import FeatureDataset
+    from probe.sweep import ResidentFeatures
+
+    config, _ = tiny_pipeline
+    paths = Artifacts.from_config(config)
+    run("prepare", config)
+    run("extract", config)
+    manifest = read_json(paths.features / "manifest.json")
+    resident = ResidentFeatures(paths.features, manifest, "train", limit=16)
+    source = FeatureDataset(paths.features, manifest, "train")
+    by_id = {row["id"]: i for i, row in enumerate(source.rows)}
+    assert len(resident) == 16
+    for row in resident:
+        original = source[by_id[row["id"]]]
+        for key in ("hidden_states", "response_mask", "labels", "label_mask"):
+            torch.testing.assert_close(row[key], original[key])
+    smaller = ResidentFeatures(paths.features, manifest, "train", limit=8)
+    assert {r["id"] for r in smaller.rows} <= {r["id"] for r in resident.rows}
+    with pytest.raises(ValueError, match="train/validation"):
+        ResidentFeatures(paths.features, manifest, "wildguardtest")
+
+
+def test_validation_only_search_completes_and_reuses_trials(tiny_pipeline, monkeypatch):
+    from probe.features import FeatureDataset
+    from probe.sweep import main, write_config
+
+    config, _ = tiny_pipeline
+    paths = Artifacts.from_config(config)
+    run("prepare", config)
+    run("extract", config)
+    config.probe = ComponentConfig("mqa_rmattn", {
+        "num_query_heads": 2, "head_dim": 4, "mlp_hidden_sizes": [12, 12],
+        "internal_heads": 2,
+    })
+    config_path = paths.prepared.parent / "search.yaml"
+    write_config(config_path, config)
+    opened = []
+    original = FeatureDataset.__init__
+
+    def track(self, root, manifest, split):
+        opened.append(split)
+        original(self, root, manifest, split)
+
+    monkeypatch.setattr(FeatureDataset, "__init__", track)
+    job = paths.prepared.parent / "search"
+    args = ["--config", str(config_path), "--context-windows", "2", "--risk-windows", "3",
+            "--learning-rates", "0.001", "--train-samples", "16", "--cache-device", "cpu",
+            "--output", str(job)]
+    assert main(args) == 0
+    summary = read_json(job / "summary.json")
+    assert summary["complete"]
+    assert summary["protocol"]["test_data_used"] is False
+    assert summary["protocol"]["membership"]["train"]["samples"] == 16
+    assert set(opened) == {"train", "validation"}
+    best = load_config([job / "best_config.yaml"])
+    assert best.probe.params["context_window"] == 2
+    assert best.probe.params["risk_window"] == 3
+    result_file = Path(summary["best"]["run_dir"]) / "result.json"
+    previous = result_file.read_bytes()
+    assert main(args) == 0
+    assert result_file.read_bytes() == previous
+
+
+def test_final_epoch_crash_recovers_history_from_checkpoint(tiny_pipeline, monkeypatch):
+    from probe.stages import train
+
+    config, _ = tiny_pipeline
+    config.training.epochs = 1
+    paths = Artifacts.from_config(config)
+    run("prepare", config)
+    run("extract", config)
+    original = train.save_checkpoint
+
+    def save_then_crash(path, state):
+        original(path, state)
+        if path.name == "last.pt":
+            raise RuntimeError("crash before history")
+
+    monkeypatch.setattr(train, "save_checkpoint", save_then_crash)
+    with pytest.raises(RuntimeError, match="crash before history"):
+        run("train", config)
+    assert not (paths.run / "history.json").exists()
+    monkeypatch.setattr(train, "save_checkpoint", original)
+    run("train", config)
+    assert len(read_json(paths.run / "history.json")) == 1
+    checked_manifest(paths.run / "manifest.json")
+
+
+def test_evaluation_reports_fpr5_as_primary_metrics(tiny_pipeline):
+    config, _ = tiny_pipeline
+    config.probe = ComponentConfig("mqa_rmattn", {"context_window": 0, "risk_window": 3})
+    config.evaluation.threshold_metric = "fpr"
+    config.evaluation.fpr_targets = [0.05]
+    config.evaluation.readouts = ["max"]
+    paths = Artifacts.from_config(config)
+    for stage in ("prepare", "extract", "train", "evaluate"):
+        run(stage, config)
+    result = read_json(paths.run / "evaluation/max.json")
+    assert result["primary_threshold_rule"] == {"metric": "fpr", "fpr_target": 0.05}
+    for split, heads in result["splits"].items():
+        for head, primary in heads.items():
+            assert primary["threshold_logit"] == result["thresholds"][head]["fpr"]["0.05"]
+            for key, value in primary["at_validation_fpr"]["0.05"].items():
+                assert primary[key] == value
+            if split == "validation" and primary["fpr"] is not None:
+                assert primary["fpr"] <= 0.05

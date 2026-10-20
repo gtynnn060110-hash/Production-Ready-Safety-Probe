@@ -26,8 +26,8 @@ from ..losses import build_loss
 from ..probes import build_probe
 
 
-def train_epochs(config, paths, manifest, model, objective, signature):
-    batches_per_epoch = len(loader(config, paths, manifest, "train", train=True))
+def train_epochs(config, paths, manifest, model, objective, signature, *, loader_factory=loader):
+    batches_per_epoch = len(loader_factory(config, paths, manifest, "train", train=True))
     accum = config.training.gradient_accumulation_steps
     updates_per_epoch = math.ceil(batches_per_epoch / accum)
     total_updates = config.training.epochs * updates_per_epoch
@@ -59,9 +59,11 @@ def train_epochs(config, paths, manifest, model, objective, signature):
         scheduler.load_state_dict(state["scheduler"])
         torch.set_rng_state(state["torch_rng"])
         start_epoch, best, history = state["epoch"] + 1, state["best_score"], state["history"]
+        # Recover a crash after last.pt committed but before history.json was written.
+        write_json(paths.run / "history.json", history)
         logging.info("Resuming from completed epoch %s", start_epoch)
     for epoch in range(start_epoch, config.training.epochs):
-        batches = loader(config, paths, manifest, "train", train=True, epoch=epoch)
+        batches = loader_factory(config, paths, manifest, "train", train=True, epoch=epoch)
         model.train()
         optimizer.zero_grad(set_to_none=True)
         loss_sum = 0.0
@@ -97,7 +99,7 @@ def train_epochs(config, paths, manifest, model, objective, signature):
                 )
         val = predict(
             model,
-            loader(config, paths, manifest, "validation"),
+            loader_factory(config, paths, manifest, "validation"),
             config,
             manifest,
             [config.training.selection_readout],

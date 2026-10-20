@@ -11,17 +11,17 @@ from torch.nn import functional as F
 from ..contracts import FeatureBatch, ProbeOutput
 
 
-class SingProbe(nn.Module):
+class CausalMQA(nn.Module):
+    """Context encoder shared by the standalone and stacked probes."""
+
     def __init__(
         self,
         input_dim: int,
-        num_heads: int,
         num_query_heads: int = 4,
         num_kv_heads: int = 1,
         head_dim: int = 64,
         sliding_window: int = 2048,
         rms_norm_eps: float = 1e-6,
-        init_bias: float = 0.0,
         attention_chunk_size: int = 256,
     ):
         super().__init__()
@@ -39,10 +39,8 @@ class SingProbe(nn.Module):
         self.proj_v = nn.Linear(input_dim, head_dim, bias=False)
         self.o_proj = nn.Linear(width, width, bias=False)
         self.norm = nn.RMSNorm(width, eps=rms_norm_eps)
-        self.classifier = nn.Linear(width, num_heads)
-        nn.init.constant_(self.classifier.bias, init_bias)
 
-    def forward(self, batch: FeatureBatch) -> ProbeOutput:
+    def forward(self, batch: FeatureBatch) -> torch.Tensor:
         x = batch.hidden_states
         b, t, _ = x.shape
         query = self.proj_q(x)
@@ -69,5 +67,36 @@ class SingProbe(nn.Module):
                 )
             )
         mixed = torch.cat(context, dim=2).transpose(1, 2).reshape(b, t, -1)
-        logits = self.classifier(self.norm(query + self.o_proj(mixed)))
+        return self.norm(query + self.o_proj(mixed))
+
+
+class SingProbe(CausalMQA):
+    """Standalone encoder and classifier; original state-dict keys are preserved."""
+
+    def __init__(
+        self,
+        input_dim: int,
+        num_heads: int,
+        num_query_heads: int = 4,
+        num_kv_heads: int = 1,
+        head_dim: int = 64,
+        sliding_window: int = 2048,
+        rms_norm_eps: float = 1e-6,
+        init_bias: float = 0.0,
+        attention_chunk_size: int = 256,
+    ):
+        super().__init__(
+            input_dim=input_dim,
+            num_query_heads=num_query_heads,
+            num_kv_heads=num_kv_heads,
+            head_dim=head_dim,
+            sliding_window=sliding_window,
+            rms_norm_eps=rms_norm_eps,
+            attention_chunk_size=attention_chunk_size,
+        )
+        self.classifier = nn.Linear(num_query_heads * head_dim, num_heads)
+        nn.init.constant_(self.classifier.bias, init_bias)
+
+    def forward(self, batch: FeatureBatch) -> ProbeOutput:
+        logits = self.classifier(super().forward(batch))
         return ProbeOutput(logits, batch.response_mask & batch.attention_mask)
