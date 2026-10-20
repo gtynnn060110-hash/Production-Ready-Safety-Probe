@@ -1,0 +1,9 @@
+# The server's safety-compare environment currently has compatible packages.
+# Install this file only in a fresh environment; Qwen3.5 support requires recent Transformers.
+torch>=2.5
+transformers>=5.0
+datasets>=3.0
+Pillow>=10.0
+scikit-learn>=1.4
+pyarrow>=18.0
+tqdm>=4.66

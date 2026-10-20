@@ -1,0 +1,27 @@
+# Local datasets and hidden-state caches (may be very large or contain images).
+/data/raw
+/data/processed/
+/data/activations/
+
+# Checkpoints and generated evaluation artifacts.
+/outputs/
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+
+# Python environments, caches, and build artifacts.
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+*.egg-info/
+
+# Local secrets.
+.env
+.env.*
+!.env.example
