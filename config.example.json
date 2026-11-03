@@ -1,0 +1,389 @@
+{
+  "db": "data/probe.sqlite",
+  "raw_dir": "data/raw",
+  "assets_dir": "data/images",
+  "taxonomy_version": "19-v1",
+  "policy_file": "policy.md",
+  "generation": {
+    "base_url": "http://localhost:8000/v1",
+    "model": "GLM-4-9B",
+    "api_key_env": "GEN_API_KEY",
+    "temperature": 0.8,
+    "max_tokens": 2048,
+    "timeout": 180,
+    "retries": 2,
+    "json_mode": true
+  },
+  "judge": {
+    "base_url": "http://localhost:8000/v1",
+    "model": "YOUR_JUDGE_MODEL",
+    "api_key_env": "JUDGE_API_KEY",
+    "temperature": 0,
+    "max_tokens": 2048,
+    "timeout": 180,
+    "retries": 2,
+    "json_mode": true
+  },
+  "processing": {
+    "max_attempts": 6
+  },
+  "sources": [
+    {
+      "name": "beavertails",
+      "repo_id": "PKU-Alignment/BeaverTails",
+      "revision": "8401fe609d288129cc684a9b3be6a93e41cfe678",
+      "enabled": true,
+      "notes": "训练来源，仅取330k原始训练文件。",
+      "allow_patterns": [
+        "README.md",
+        "round0/330k/train.jsonl.xz"
+      ],
+      "fields": {
+        "prompt": "prompt",
+        "responses": [
+          "response"
+        ],
+        "metadata": [
+          "category",
+          "is_safe"
+        ]
+      },
+      "imports": [
+        {
+          "glob": "round0/330k/train.jsonl.xz"
+        }
+      ]
+    },
+    {
+      "name": "saferlhf",
+      "repo_id": "PKU-Alignment/PKU-SafeRLHF",
+      "revision": "9421ffafec3fa40a1f1a7d567b4d525079477ecb",
+      "enabled": true,
+      "notes": "训练来源，仅取三个模型的原始训练文件。",
+      "allow_patterns": [
+        "README.md",
+        "data/*/train.jsonl"
+      ],
+      "fields": {
+        "prompt": "prompt",
+        "responses": [
+          "response_0",
+          "response_1"
+        ],
+        "metadata": [
+          "is_response_0_safe",
+          "is_response_1_safe",
+          "response_0_harm_category",
+          "response_1_harm_category",
+          "response_0_source",
+          "response_1_source"
+        ]
+      },
+      "imports": [
+        {
+          "glob": "data/*/train.jsonl"
+        }
+      ]
+    },
+    {
+      "name": "saferlhf_qa",
+      "repo_id": "PKU-Alignment/PKU-SafeRLHF-QA",
+      "revision": "a4200bf784bad53d73fa0536ab4306e475644143",
+      "enabled": true,
+      "notes": "训练来源，与SafeRLHF重叠，统一去重并保留来源。",
+      "allow_patterns": [
+        "README.md",
+        "data/*/train.jsonl"
+      ],
+      "fields": {
+        "prompt": "prompt",
+        "responses": [
+          "response"
+        ],
+        "metadata": [
+          "is_safe",
+          "harm_category",
+          "severity_level",
+          "response_source"
+        ]
+      },
+      "imports": [
+        {
+          "glob": "data/*/train.jsonl"
+        }
+      ]
+    },
+    {
+      "name": "wildguard",
+      "repo_id": "allenai/wildguardmix",
+      "revision": "d29c47f41c8b51348b5c8e8c81c039b3132b66d1",
+      "enabled": true,
+      "notes": "训练来源，仅取原始训练文件；需HF访问授权。",
+      "allow_patterns": [
+        "README.md",
+        "train/*.parquet"
+      ],
+      "fields": {
+        "prompt": "prompt",
+        "responses": [
+          "response"
+        ],
+        "metadata": [
+          "prompt_harm_label",
+          "response_harm_label",
+          "response_refusal_label",
+          "subcategory"
+        ]
+      },
+      "imports": [
+        {
+          "glob": "train/*.parquet"
+        }
+      ]
+    },
+    {
+      "name": "wildjailbreak",
+      "repo_id": "allenai/wildjailbreak",
+      "revision": "5ddc12a7894f842b0619b8e1c7ee496b198af009",
+      "enabled": true,
+      "notes": "训练来源，仅取原始训练文件；需HF访问授权。",
+      "allow_patterns": [
+        "README.md",
+        "train/train.tsv"
+      ],
+      "fields": {
+        "prompt": "_prompt",
+        "responses": [
+          "completion"
+        ],
+        "metadata": [
+          "data_type",
+          "tactics",
+          "vanilla",
+          "adversarial"
+        ]
+      },
+      "imports": [
+        {
+          "glob": "train/train.tsv"
+        }
+      ],
+      "adapter": "wildjailbreak"
+    },
+    {
+      "name": "aegis2",
+      "repo_id": "nvidia/Aegis-AI-Content-Safety-Dataset-2.0",
+      "revision": "d86bb8bedff51d25ac834ab7838f1cc61acb7a2c",
+      "enabled": true,
+      "notes": "训练来源，仅取train和refusals_train，跳过无法恢复的REDACTED请求。",
+      "allow_patterns": [
+        "README.md",
+        "train.json",
+        "refusals_train.json"
+      ],
+      "fields": {
+        "prompt": "prompt",
+        "responses": [
+          "response"
+        ],
+        "metadata": [
+          "id",
+          "prompt_label",
+          "response_label",
+          "violated_categories"
+        ]
+      },
+      "imports": [
+        {
+          "glob": "train.json"
+        },
+        {
+          "glob": "refusals_train.json"
+        }
+      ],
+      "adapter": "aegis"
+    },
+    {
+      "name": "toxicchat",
+      "repo_id": "lmsys/toxic-chat",
+      "revision": "29df8e4dba60e1f4af4b4075c0705c5b313548a8",
+      "enabled": true,
+      "notes": "训练来源，仅取0124原始训练文件。",
+      "allow_patterns": [
+        "README.md",
+        "data/0124/*_train.csv"
+      ],
+      "fields": {
+        "prompt": "user_input",
+        "responses": [
+          "model_output"
+        ],
+        "metadata": [
+          "conv_id",
+          "toxicity",
+          "jailbreaking",
+          "human_annotation"
+        ]
+      },
+      "imports": [
+        {
+          "glob": "data/0124/*_train.csv"
+        }
+      ]
+    },
+    {
+      "name": "beavertails_v",
+      "repo_id": "saferlhf-v/BeaverTails-V",
+      "revision": "ee19041205c720c0faea575de563de8a6a8f9094",
+      "enabled": true,
+      "notes": "图文训练来源，仅取原始train.parquet。",
+      "allow_patterns": [
+        "README.md",
+        "data/*/train.parquet"
+      ],
+      "fields": {
+        "prompt": "question",
+        "responses": [
+          "response_1",
+          "response_2"
+        ],
+        "images": "image",
+        "metadata": [
+          "category",
+          "image_severity",
+          "is_response_1_safe",
+          "is_response_2_safe",
+          "response_1_from",
+          "response_2_from"
+        ]
+      },
+      "imports": [
+        {
+          "glob": "data/*/train.parquet"
+        }
+      ]
+    },
+    {
+      "name": "vlguard",
+      "repo_id": "ys-zong/VLGuard",
+      "revision": "b0be37a1ab7accb14e10d6a0ec3ce62cfaff2d46",
+      "enabled": true,
+      "notes": "图文训练来源，仅取train.json和train.zip；需核对HF访问权限。",
+      "allow_patterns": [
+        "README.md",
+        "train.json",
+        "train.zip"
+      ],
+      "fields": {
+        "prompt": "_prompt",
+        "responses": [
+          "_response"
+        ],
+        "images": "image",
+        "metadata": [
+          "id",
+          "safe",
+          "category",
+          "subcategory"
+        ]
+      },
+      "imports": [
+        {
+          "glob": "train.json",
+          "image_root": "train"
+        }
+      ],
+      "adapter": "vlguard",
+      "extract": [
+        "train.zip"
+      ]
+    },
+    {
+      "name": "seval",
+      "repo_id": "IS2Lab/S-Eval",
+      "revision": "4f554d3d3293dd2ba255a2e6ba8b53284ecf48eb",
+      "enabled": true,
+      "notes": "转作训练请求池，取中英文完整基础与攻击版本，后续补回答。",
+      "allow_patterns": [
+        "README.md",
+        "S-Eval_*_full.jsonl"
+      ],
+      "fields": {
+        "prompt": "prompt",
+        "responses": [],
+        "metadata": [
+          "traceid",
+          "risk_type",
+          "ext"
+        ]
+      },
+      "imports": [
+        {
+          "glob": "S-Eval_*_full.jsonl"
+        }
+      ]
+    },
+    {
+      "name": "jailbreakv",
+      "repo_id": "JailbreakV-28K/JailBreakV-28k",
+      "revision": "f949ca582fff13d396ac8fce59596afafb2b78d3",
+      "enabled": true,
+      "notes": "转作图文训练请求池，保留攻击请求与原图，不重复导入Mini。",
+      "allow_patterns": [
+        "README.md",
+        "JailBreakV_28K/JailBreakV_28K.csv",
+        "JailBreakV_28K/**/*.png",
+        "JailBreakV_28K/**/*.jpg",
+        "JailBreakV_28K/**/*.jpeg"
+      ],
+      "fields": {
+        "prompt": "jailbreak_query",
+        "responses": [],
+        "images": "image_path",
+        "metadata": [
+          "id",
+          "policy",
+          "format",
+          "redteam_query",
+          "from"
+        ]
+      },
+      "imports": [
+        {
+          "glob": "JailBreakV_28K/JailBreakV_28K.csv"
+        }
+      ],
+      "image_root": "JailBreakV_28K"
+    },
+    {
+      "name": "streamguard",
+      "repo_id": "Alibaba-AAIG/StreamGuardBench",
+      "revision": "7fa1203b2d9be5671d3b40f2c1df0035deeb098c",
+      "enabled": true,
+      "notes": "转作回答训练来源，仅取其原始train Arrow及图像资源。",
+      "allow_patterns": [
+        "README.md",
+        "**/train/*.arrow",
+        "**/*.png",
+        "**/*.jpg",
+        "**/*.jpeg"
+      ],
+      "fields": {
+        "prompt": "prompt",
+        "responses": [
+          "response"
+        ],
+        "images": "image",
+        "metadata": [
+          "label",
+          "reason"
+        ]
+      },
+      "imports": [
+        {
+          "glob": "**/train/*.arrow"
+        }
+      ]
+    }
+  ]
+}
