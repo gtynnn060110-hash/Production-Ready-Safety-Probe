@@ -1,27 +1,61 @@
-# Local datasets and hidden-state caches (may be very large or contain images).
-/data/raw
-/data/processed/
-/data/activations/
+# Downloaded and prepared datasets, including external cloned repositories
+/data/
+/data-preparation/data/
 
-# Checkpoints and generated evaluation artifacts.
+# Training/evaluation outputs and historical code archives
 /outputs/
+/text_eval/artifacts/
+/archives/
+
+# Databases and their journal/WAL files
+*.sqlite
+*.sqlite3
+*.sqlite-*
+*.sqlite3-*
+*.db
+*.db-*
+
+# Model weights, checkpoints and bulk data files
+*.safetensors
 *.pt
 *.pth
 *.ckpt
-*.safetensors
+*.gguf
+*.parquet
+*.arrow
+*.feather
+*.jsonl
+*.jsonl.gz
+*.jsonl.xz
 
-# Python environments, caches, and build artifacts.
-__pycache__/
-*.py[cod]
-.venv/
-venv/
-.pytest_cache/
-.ruff_cache/
-build/
-dist/
-*.egg-info/
+# Compressed downloads and archives
+*.zip
+*.zip.enc
+*.tar
+*.tar.gz
+*.tgz
+*.tar.xz
+*.tar.zst
+*.7z
+*.rar
 
-# Local secrets.
+# Local secrets and machine-specific configuration
 .env
 .env.*
 !.env.example
+!.env.template
+*.pem
+*.key
+*credentials*.json
+*secret*.json
+/data-preparation/config.json
+
+# Python caches, environments and transient logs
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+*.log

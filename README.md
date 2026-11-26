@@ -13,7 +13,7 @@ Both upstream datasets are CC BY-NC 4.0; use is restricted to non-commercial res
 ## Layout
 
 ```text
-Production-Ready-Safety-Probe/
+agent-probe/
   data/raw/                 # downloads and image files (ignored by git)
   data/processed/           # JSONL manifests (ignored by git)
   data/activations/         # future hidden-state cache (ignored by git)

@@ -45,3 +45,21 @@ python eval/eval_rolling_probe.py \
 ```
 
 The alternative trainer adds `--attention-heads`, `--mlp-hidden-size`, `--dropout`, `--temperature`, `--ema-alpha`, `--loss-ema-rho`, and head-weight clamp options. To match the baseline's scan scope, both training and evaluation currently score the complete image + question + response sequence, not only assistant answer tokens. MM-SafetyBench generation, caching/resume, judge options, and CSV fields remain in the existing evaluator.
+
+## Text-eval MQA-RMAttn and SingProbe comparison
+
+`train_research_probe.py` adds the text-eval `mqa_rmattn` and `singprobe` architectures on the same BeaverTails-V image/question/response rows and four image-project labels. It follows the image pipeline's full-sequence scoring scope, uses Qwen hidden-state index 15 with RMS-no-affine normalization (epsilon `1e-6`), and selects the checkpoint with highest validation Overall Safety AUPRC. Both use the text-eval `SingProbeWeighted` token BCE (`temperature=0.1`, `beta_tau=0.35`, detached per-head token weights; no `pos_weight`), 4 epochs, microbatch 8, accumulation 4, AdamW, weight decay 0.01, cosine schedule with 5% warmup, and gradient clipping at 1.0. Thresholds are calibrated on BeaverTails-V validation at FPR 5%.
+
+The trainer atomically saves an epoch checkpoint as `<output-stem>.epochN.pt` after every validation pass, updates `<output>` atomically to the best-so-far checkpoint, and writes the JSON history after every epoch. This preserves usable weights if a later epoch or final save is interrupted.
+
+- `mqa_rmattn`: full-causal MQA context encoder (4 query heads, 1 KV head, head dim 64), then rolling risk attention (window 40) with two MLP layers of width 100 and 10 internal attention heads; learning rate `1e-4`.
+- `singprobe`: full-causal MQA context encoder (4 query heads, 1 KV head, head dim 64) and a per-token linear classifier; learning rate `3e-4`.
+
+Train each checkpoint with:
+
+```bash
+python train/train_research_probe.py --probe mqa_rmattn --output outputs/mqa_rmattn_probe_4epoch.pt
+python train/train_research_probe.py --probe singprobe --output outputs/singprobe_probe_4epoch.pt
+```
+
+The existing `eval_rolling_probe.py` recognizes both checkpoint architectures and can evaluate BeaverTails-V or reuse the same MM-SafetyBench generated-response CSV with `--input-csv`; it does not regenerate answers when that option is present.

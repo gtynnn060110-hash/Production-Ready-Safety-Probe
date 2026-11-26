@@ -31,6 +31,7 @@ from train.probe_models import (  # noqa: E402
     ema_max_probabilities,
     targets_for_row,
 )
+from train.research_probe_models import MQARMAttnProbe, SingProbe, max_readout  # noqa: E402
 
 
 def binary_metrics(rows: list[dict], head: str, threshold: float) -> dict:
@@ -151,9 +152,17 @@ def main() -> None:
 
     architecture = checkpoint.get("architecture", "max_of_rolling_means")
     is_attention_swim = architecture == "causal_attention_swim_v1"
-    if architecture not in {"max_of_rolling_means", "causal_attention_swim_v1"}:
+    is_research_probe = architecture in {"mqa_rmattn_v1", "singprobe_v1"}
+    if architecture not in {
+        "max_of_rolling_means", "causal_attention_swim_v1", "mqa_rmattn_v1", "singprobe_v1"
+    }:
         raise SystemExit(f"Unsupported checkpoint architecture: {architecture}")
-    output_stem = "attention_swim_probe" if is_attention_swim else "rolling_probe"
+    output_stem = (
+        "attention_swim_probe" if is_attention_swim else
+        "mqa_rmattn_probe" if architecture == "mqa_rmattn_v1" else
+        "singprobe" if architecture == "singprobe_v1" else
+        "rolling_probe"
+    )
     output = args.output or ROOT / "outputs" / f"{args.dataset}_{args.split if args.dataset == 'beavertails' else 'test'}_{output_stem}.csv"
     generation_only = args.dataset == "mm_safetybench" and not args.judge and args.input_csv is None
     existing_results: list[dict] = []
@@ -209,6 +218,36 @@ def main() -> None:
             num_tasks=checkpoint.get("num_tasks", len(head_names)),
         )
         ema_alpha = float(checkpoint.get("ema_alpha", 0.5))
+    elif is_research_probe:
+        config = checkpoint.get("probe_config", {})
+        if architecture == "mqa_rmattn_v1":
+            probe = MQARMAttnProbe(
+                checkpoint["hidden_size"],
+                num_tasks=checkpoint.get("num_tasks", len(head_names)),
+                num_query_heads=config.get("num_query_heads", 4),
+                num_kv_heads=config.get("num_kv_heads", 1),
+                head_dim=config.get("head_dim", 64),
+                context_window=config.get("context_window", 0),
+                risk_window=config.get("risk_window", 40),
+                rms_norm_eps=config.get("rms_norm_eps", 1e-6),
+                attention_chunk_size=config.get("attention_chunk_size", 256),
+                mlp_hidden_sizes=tuple(config.get("mlp_hidden_sizes", [100, 100])),
+                internal_heads=config.get("internal_heads", 10),
+                context_ffn_hidden_size=config.get("context_ffn_hidden_size", 0),
+            )
+        else:
+            probe = SingProbe(
+                checkpoint["hidden_size"],
+                num_tasks=checkpoint.get("num_tasks", len(head_names)),
+                num_query_heads=config.get("num_query_heads", 4),
+                num_kv_heads=config.get("num_kv_heads", 1),
+                head_dim=config.get("head_dim", 64),
+                sliding_window=config.get("sliding_window", 0),
+                rms_norm_eps=config.get("rms_norm_eps", 1e-6),
+                init_bias=config.get("init_bias", 0.0),
+                attention_chunk_size=config.get("attention_chunk_size", 256),
+            )
+        ema_alpha = None
     else:
         probe = MaxOfRollingMeansProbe(checkpoint["hidden_size"], checkpoint["window_size"], num_heads=len(head_names))
         ema_alpha = None
@@ -239,6 +278,15 @@ def main() -> None:
                 # Keep the baseline CSV's logit/probability columns available.
                 logits = torch.logit(probabilities.clamp(1e-7, 1 - 1e-7))
                 return logits, probabilities
+            if is_research_probe:
+                if checkpoint.get("normalize") == "rms_no_affine":
+                    eps = float(checkpoint.get("norm_eps", 1e-6))
+                    hidden = hidden.float() * torch.rsqrt(
+                        hidden.float().square().mean(dim=-1, keepdim=True) + eps
+                    )
+                token_logits = probe(hidden, mask)
+                logits = max_readout(token_logits, mask).reshape(-1).float().cpu()
+                return logits, torch.sigmoid(logits)
             logits = probe(hidden, mask).reshape(-1).float().cpu()
             return logits, torch.sigmoid(logits)
 
@@ -361,7 +409,9 @@ def main() -> None:
         "judge_enabled": bool(args.dataset == "mm_safetybench" and args.judge),
         "judge_includes_image": bool(args.dataset == "mm_safetybench" and args.judge and args.judge_with_image),
         "inference_aggregation": (
-            f"max_ema_probability(alpha={ema_alpha})" if is_attention_swim else "max_rolling_mean_logit"
+            f"max_ema_probability(alpha={ema_alpha})" if is_attention_swim else
+            "max_token_logit" if is_research_probe else
+            "max_rolling_mean_logit"
         ),
         "label_source": "BeaverTails-V response-safety annotations + one-vs-rest risk labels" if args.dataset == "beavertails" else (
             "multimodal LLM judge labels" if args.judge and args.judge_with_image else

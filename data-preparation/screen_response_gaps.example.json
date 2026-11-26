@@ -1,0 +1,40 @@
+{
+  "datasets": [
+    {
+      "name": "saferlhf",
+      "files": ["data/raw/saferlhf/data/*/train.jsonl"],
+      "fields": {
+        "prompt": "prompt",
+        "responses": [
+          {"text": "response_0", "label": "is_response_0_safe", "safe_values": [true], "unsafe_values": [false]},
+          {"text": "response_1", "label": "is_response_1_safe", "safe_values": [true], "unsafe_values": [false]}
+        ]
+      }
+    },
+    {
+      "name": "saferlhf_qa",
+      "files": ["data/raw/saferlhf_qa/data/*/train.jsonl"],
+      "fields": {
+        "prompt": "prompt",
+        "responses": [
+          {"text": "response", "label": "is_safe", "safe_values": [true], "unsafe_values": [false]}
+        ]
+      }
+    },
+    {
+      "name": "beavertails",
+      "files": ["data/raw/beavertails/round0/330k/train.jsonl.xz"],
+      "fields": {
+        "prompt": "prompt",
+        "responses": [
+          {"text": "response", "label": "is_safe", "safe_values": [true], "unsafe_values": [false]}
+        ]
+      }
+    },
+    {
+      "name": "seval",
+      "files": ["data/raw/seval/S-Eval_*_full.jsonl"],
+      "fields": {"prompt": "prompt", "responses": []}
+    }
+  ]
+}
