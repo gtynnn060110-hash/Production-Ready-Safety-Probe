@@ -1,0 +1,758 @@
+{
+  "db": "data/database/probe.sqlite",
+  "raw_dir": "data/raw",
+  "assets_dir": "data/images",
+  "taxonomy_version": "19-v1",
+  "policy_file": "policy.md",
+  "generation_by_target": {
+    "safe": {
+      "base_url": "http://127.0.0.1:8004/v1",
+      "model": "Qwen3-VL-8B-Instruct",
+      "temperature": 0.8,
+      "max_tokens": 2048,
+      "timeout": 180,
+      "retries": 2,
+      "json_mode": false,
+      "pricing": {
+        "currency": "CNY",
+        "local": true,
+        "input_cny_per_million": 0,
+        "output_cny_per_million": 0,
+        "source": "local vLLM; GPU compute/electricity excluded"
+      },
+      "extra_body": {
+        "chat_template_kwargs": {
+          "enable_thinking": false
+        }
+      },
+      "timeout_retries": 8
+    },
+    "unsafe": {
+      "base_url": "http://127.0.0.1:8003/v1",
+      "model": "huihui-qwen3.8-27b-abliterated",
+      "temperature": 0.8,
+      "max_tokens": 2048,
+      "timeout": 180,
+      "retries": 2,
+      "json_mode": false,
+      "pricing": {
+        "currency": "CNY",
+        "local": true,
+        "input_cny_per_million": 0,
+        "output_cny_per_million": 0,
+        "source": "local vLLM; GPU compute/electricity excluded"
+      },
+      "extra_body": {
+        "chat_template_kwargs": {
+          "enable_thinking": false
+        }
+      },
+      "timeout_retries": 8
+    }
+  },
+  "judge": {
+    "base_url": "https://api.minimax.cn/v1",
+    "model": "MiniMax-M3.1-Flash",
+    "api_key_env": "MINIMAX_API_KEY",
+    "temperature": 0,
+    "max_tokens": 2048,
+    "timeout": 180,
+    "retries": 2,
+    "timeout_retries": 8,
+    "json_mode": true,
+    "extra_body": {
+      "reasoning_effort": "low",
+      "reasoning_split": true
+    },
+    "rate_limit": {
+      "requests_per_minute": 120,
+      "max_in_flight": 16
+    },
+    "subscription_quota": {
+      "url": "https://www.minimax.cn/v1/token_plan/remains",
+      "poll_seconds": 60
+    },
+    "pricing": {
+      "currency": "CNY",
+      "input_cny_per_million": 1,
+      "output_cny_per_million": 4,
+      "cached_input_cny_per_million": 0.1,
+      "source": "https://platform.minimax.cn/docs/pricing/overview",
+      "basis": "Public pay-as-you-go tariff equivalent only. This subscription key consumes plan quota/credits; this is not the amount charged."
+    }
+  },
+  "processing": {
+    "workers": 32,
+    "max_attempts": 12
+  },
+  "sources": [
+    {
+      "name": "beavertails",
+      "repo_id": "PKU-Alignment/BeaverTails",
+      "revision": "8401fe609d288129cc684a9b3be6a93e41cfe678",
+      "enabled": true,
+      "notes": "保留官方30k/330k的全部split；内容去重，逐条保留来源。",
+      "allow_patterns": [
+        "README.md",
+        "round0/*/*.jsonl.*"
+      ],
+      "fields": {
+        "prompt": "prompt",
+        "responses": [
+          "response"
+        ],
+        "metadata": [
+          "category",
+          "is_safe"
+        ]
+      },
+      "imports": [
+        {
+          "glob": "round0/330k/train.jsonl.xz",
+          "source_config": "default",
+          "source_split": "330k_train"
+        },
+        {
+          "glob": "round0/330k/test.jsonl.xz",
+          "source_config": "default",
+          "source_split": "330k_test"
+        },
+        {
+          "glob": "round0/30k/train.jsonl.gz",
+          "source_config": "default",
+          "source_split": "30k_train"
+        },
+        {
+          "glob": "round0/30k/test.jsonl.gz",
+          "source_config": "default",
+          "source_split": "30k_test"
+        }
+      ]
+    },
+    {
+      "name": "saferlhf",
+      "repo_id": "PKU-Alignment/PKU-SafeRLHF",
+      "revision": "9421ffafec3fa40a1f1a7d567b4d525079477ecb",
+      "enabled": true,
+      "notes": "保留三个模型的train/test；模型子目录记录在来源文件路径中。",
+      "allow_patterns": [
+        "README.md",
+        "data/*/train.jsonl",
+        "data/*/test.jsonl"
+      ],
+      "fields": {
+        "prompt": "prompt",
+        "responses": [
+          "response_0",
+          "response_1"
+        ],
+        "metadata": [
+          "is_response_0_safe",
+          "is_response_1_safe",
+          "response_0_harm_category",
+          "response_1_harm_category",
+          "response_0_source",
+          "response_1_source"
+        ]
+      },
+      "imports": [
+        {
+          "glob": "data/*/train.jsonl",
+          "source_config": "default",
+          "source_split": "train"
+        },
+        {
+          "glob": "data/*/test.jsonl",
+          "source_config": "default",
+          "source_split": "test"
+        }
+      ]
+    },
+    {
+      "name": "saferlhf_qa",
+      "repo_id": "PKU-Alignment/PKU-SafeRLHF-QA",
+      "revision": "a4200bf784bad53d73fa0536ab4306e475644143",
+      "enabled": true,
+      "notes": "保留三个模型的train/test；模型子目录记录在来源文件路径中。",
+      "allow_patterns": [
+        "README.md",
+        "data/*/train.jsonl",
+        "data/*/test.jsonl"
+      ],
+      "fields": {
+        "prompt": "prompt",
+        "responses": [
+          "response"
+        ],
+        "metadata": [
+          "is_safe",
+          "harm_category",
+          "severity_level",
+          "response_source"
+        ]
+      },
+      "imports": [
+        {
+          "glob": "data/*/train.jsonl",
+          "source_config": "default",
+          "source_split": "train"
+        },
+        {
+          "glob": "data/*/test.jsonl",
+          "source_config": "default",
+          "source_split": "test"
+        }
+      ]
+    },
+    {
+      "name": "wildguard",
+      "repo_id": "allenai/wildguardmix",
+      "revision": "d29c47f41c8b51348b5c8e8c81c039b3132b66d1",
+      "enabled": true,
+      "notes": "Only wildguardtrain is imported; wildguardtest is reserved for OOD evaluation.",
+      "allow_patterns": [
+        "README.md",
+        "train/*.parquet"
+      ],
+      "fields": {
+        "prompt": "prompt",
+        "responses": [
+          "response"
+        ],
+        "metadata": [
+          "prompt_harm_label",
+          "response_harm_label",
+          "response_refusal_label",
+          "subcategory"
+        ]
+      },
+      "imports": [
+        {
+          "glob": "train/*.parquet",
+          "source_config": "wildguardtrain",
+          "source_split": "train"
+        }
+      ]
+    },
+    {
+      "name": "wildjailbreak",
+      "repo_id": "allenai/wildjailbreak",
+      "revision": "5ddc12a7894f842b0619b8e1c7ee496b198af009",
+      "enabled": true,
+      "notes": "保留train/eval两个官方config；二者未显式指定split，HF均使用train。",
+      "allow_patterns": [
+        "README.md",
+        "train/train.tsv",
+        "eval/eval.tsv"
+      ],
+      "fields": {
+        "prompt": "_prompt",
+        "responses": [
+          "completion"
+        ],
+        "metadata": [
+          "data_type",
+          "tactics",
+          "vanilla",
+          "adversarial"
+        ]
+      },
+      "imports": [
+        {
+          "glob": "train/train.tsv",
+          "source_config": "train",
+          "source_split": "train"
+        },
+        {
+          "glob": "eval/eval.tsv",
+          "source_config": "eval",
+          "source_split": "train",
+          "fields": {
+            "metadata": [
+              "label",
+              "data_type",
+              "adversarial"
+            ]
+          }
+        }
+      ],
+      "adapter": "wildjailbreak"
+    },
+    {
+      "name": "aegis2",
+      "repo_id": "nvidia/Aegis-AI-Content-Safety-Dataset-2.0",
+      "revision": "d86bb8bedff51d25ac834ab7838f1cc61acb7a2c",
+      "enabled": true,
+      "notes": "保留train/validation/test及对应refusals文件，排除REDACTED，不重建。",
+      "allow_patterns": [
+        "README.md",
+        "train.json",
+        "refusals_train.json",
+        "validation.json",
+        "refusals_validation.json",
+        "test.json"
+      ],
+      "fields": {
+        "prompt": "prompt",
+        "responses": [
+          "response"
+        ],
+        "metadata": [
+          "id",
+          "prompt_label",
+          "response_label",
+          "violated_categories"
+        ]
+      },
+      "imports": [
+        {
+          "glob": "train.json",
+          "source_config": "default",
+          "source_split": "train"
+        },
+        {
+          "glob": "refusals_train.json",
+          "source_config": "default",
+          "source_split": "train"
+        },
+        {
+          "glob": "validation.json",
+          "source_config": "default",
+          "source_split": "validation"
+        },
+        {
+          "glob": "refusals_validation.json",
+          "source_config": "default",
+          "source_split": "validation"
+        },
+        {
+          "glob": "test.json",
+          "source_config": "default",
+          "source_split": "test"
+        }
+      ],
+      "adapter": "aegis"
+    },
+    {
+      "name": "toxicchat",
+      "repo_id": "lmsys/toxic-chat",
+      "revision": "29df8e4dba60e1f4af4b4075c0705c5b313548a8",
+      "enabled": true,
+      "notes": "仅当前0124版本，保留train/test，不重复导入all或旧1123。",
+      "allow_patterns": [
+        "README.md",
+        "data/0124/*_train.csv",
+        "data/0124/*_test.csv"
+      ],
+      "fields": {
+        "prompt": "user_input",
+        "responses": [
+          "model_output"
+        ],
+        "metadata": [
+          "conv_id",
+          "toxicity",
+          "jailbreaking",
+          "human_annotation"
+        ]
+      },
+      "imports": [
+        {
+          "glob": "data/0124/*_train.csv",
+          "source_config": "toxicchat0124",
+          "source_split": "train"
+        },
+        {
+          "glob": "data/0124/*_test.csv",
+          "source_config": "toxicchat0124",
+          "source_split": "test"
+        }
+      ]
+    },
+    {
+      "name": "beavertails_v",
+      "repo_id": "saferlhf-v/BeaverTails-V",
+      "revision": "ee19041205c720c0faea575de563de8a6a8f9094",
+      "enabled": true,
+      "notes": "保留20个类别config的train/evaluation，双回答分别保留。",
+      "allow_patterns": [
+        "README.md",
+        "data/*/train.parquet",
+        "data/*/evaluation.parquet"
+      ],
+      "fields": {
+        "prompt": "question",
+        "responses": [
+          "response_1",
+          "response_2"
+        ],
+        "images": "image",
+        "metadata": [
+          "category",
+          "image_severity",
+          "is_response_1_safe",
+          "is_response_2_safe",
+          "response_1_from",
+          "response_2_from"
+        ]
+      },
+      "imports": [
+        {
+          "glob": "data/*/train.parquet",
+          "source_config": "{path[1]}",
+          "source_split": "train"
+        },
+        {
+          "glob": "data/*/evaluation.parquet",
+          "source_config": "{path[1]}",
+          "source_split": "evaluation"
+        }
+      ]
+    },
+    {
+      "name": "vlguard",
+      "repo_id": "ys-zong/VLGuard",
+      "revision": "b0be37a1ab7accb14e10d6a0ec3ce62cfaff2d46",
+      "enabled": true,
+      "notes": "保留原生train/test及图片，每个instruction-response独立单轮导入。",
+      "allow_patterns": [
+        "README.md",
+        "train.json",
+        "train.zip",
+        "test.json",
+        "test.zip"
+      ],
+      "fields": {
+        "prompt": "_prompt",
+        "responses": [
+          "_response"
+        ],
+        "images": "image",
+        "metadata": [
+          "id",
+          "safe",
+          "harmful_category",
+          "harmful_subcategory"
+        ]
+      },
+      "imports": [
+        {
+          "glob": "train.json",
+          "source_config": null,
+          "source_split": "train",
+          "image_root": "train"
+        },
+        {
+          "glob": "test.json",
+          "source_config": null,
+          "source_split": "test",
+          "image_root": "test"
+        }
+      ],
+      "adapter": "vlguard",
+      "extract": [
+        "train.zip",
+        "test.zip"
+      ]
+    },
+    {
+      "name": "seval",
+      "repo_id": "IS2Lab/S-Eval",
+      "revision": "4f554d3d3293dd2ba255a2e6ba8b53284ecf48eb",
+      "enabled": true,
+      "notes": "完整中英文基础/攻击config，官方split=test；不重复导入small/medium/large。",
+      "allow_patterns": [
+        "README.md",
+        "S-Eval_*_full.jsonl"
+      ],
+      "fields": {
+        "prompt": "prompt",
+        "responses": [],
+        "metadata": [
+          "traceid",
+          "risk_type",
+          "ext"
+        ]
+      },
+      "imports": [
+        {
+          "glob": "S-Eval_base_risk_en_full.jsonl",
+          "source_config": "base_risk_set_en_full",
+          "source_split": "test"
+        },
+        {
+          "glob": "S-Eval_base_risk_zh_full.jsonl",
+          "source_config": "base_risk_set_zh_full",
+          "source_split": "test"
+        },
+        {
+          "glob": "S-Eval_attack_en_full.jsonl",
+          "source_config": "attack_set_en_full",
+          "source_split": "test"
+        },
+        {
+          "glob": "S-Eval_attack_zh_full.jsonl",
+          "source_config": "attack_set_zh_full",
+          "source_split": "test"
+        }
+      ]
+    },
+    {
+      "name": "airbench",
+      "repo_id": "stanford-crfm/air-bench-2024",
+      "revision": "976d9fbb0f52bce704dcbef5bd7a2652e65f2a21",
+      "enabled": true,
+      "notes": "完整default config、test split；区域config为其子集，judge_prompts不属于样本。",
+      "allow_patterns": [
+        "README.md",
+        "category_*.csv"
+      ],
+      "fields": {
+        "prompt": "prompt",
+        "responses": [],
+        "metadata": [
+          "cate-idx",
+          "l2-name",
+          "l3-name",
+          "l4-name"
+        ]
+      },
+      "imports": [
+        {
+          "glob": "category_*.csv",
+          "source_config": "default",
+          "source_split": "test"
+        }
+      ]
+    },
+    {
+      "name": "vlsbench",
+      "allow_image_only": true,
+      "repo_id": "Foreshhh/vlsbench",
+      "revision": "b56f6f6aad102fdb53f46e35fec96836bbe13001",
+      "enabled": true,
+      "notes": "JSON与图片等价导入官方default/train，保留纯图片样本；不重复下载Parquet/tar。",
+      "allow_patterns": [
+        "README.md",
+        "data.json",
+        "imgs/*"
+      ],
+      "fields": {
+        "prompt": "instruction",
+        "responses": [],
+        "images": "image_path",
+        "metadata": [
+          "instruction_id",
+          "category",
+          "sub_category",
+          "source"
+        ]
+      },
+      "imports": [
+        {
+          "glob": "data.json",
+          "source_config": "default",
+          "source_split": "train"
+        }
+      ]
+    },
+    {
+      "name": "jailbreakv",
+      "image_path_maps": [
+        {
+          "prefix": "query_related/",
+          "root": "streamguard/mmsafety/query_related"
+        }
+      ],
+      "repo_id": "JailbreakV-28K/JailBreakV-28k",
+      "revision": "f949ca582fff13d396ac8fce59596afafb2b78d3",
+      "enabled": true,
+      "notes": "保留完整/mini split和独立原始RedTeam_2K；mini内容去重，仍保留成员出处。",
+      "allow_patterns": [
+        "README.md",
+        "JailBreakV_28K/JailBreakV_28K.csv",
+        "JailBreakV_28K/**/*.png",
+        "JailBreakV_28K/**/*.jpg",
+        "JailBreakV_28K/**/*.jpeg",
+        "JailBreakV_28K/mini_JailBreakV_28K.csv",
+        "JailBreakV_28K/RedTeam_2K.csv"
+      ],
+      "fields": {
+        "prompt": "jailbreak_query",
+        "responses": [],
+        "images": "image_path",
+        "metadata": [
+          "id",
+          "policy",
+          "format",
+          "redteam_query",
+          "from"
+        ]
+      },
+      "imports": [
+        {
+          "glob": "JailBreakV_28K/JailBreakV_28K.csv",
+          "source_config": "JailBreakV_28K",
+          "source_split": "JailBreakV_28K"
+        },
+        {
+          "glob": "JailBreakV_28K/mini_JailBreakV_28K.csv",
+          "source_config": "JailBreakV_28K",
+          "source_split": "mini_JailBreakV_28K"
+        },
+        {
+          "glob": "JailBreakV_28K/RedTeam_2K.csv",
+          "source_config": "RedTeam_2K",
+          "source_split": "RedTeam_2K",
+          "fields": {
+            "prompt": "question",
+            "images": null
+          }
+        }
+      ],
+      "image_root": "JailBreakV_28K",
+      "image_archive": {
+        "url": "https://drive.usercontent.google.com/download?id=1ZrvSHklXiGYhpiVoxUH8FWc5k0fv2xVZ&export=download&confirm=t",
+        "prefix": "JailBreakV_28k/",
+        "size": 16338049538
+      }
+    },
+    {
+      "name": "streamguard",
+      "image_path_maps": [
+        {
+          "prefix": "JailBreakV_28k/query_related/",
+          "root": "streamguard/mmsafety/query_related"
+        },
+        {
+          "prefix": "JailBreakV_28k/figstep/",
+          "root": "jailbreakv/JailBreakV_28K/figstep"
+        }
+      ],
+      "repo_id": "Alibaba-AAIG/StreamGuardBench",
+      "revision": "7fa1203b2d9be5671d3b40f2c1df0035deeb098c",
+      "enabled": true,
+      "notes": "All native partitions except wildguard/test, which duplicates the reserved WildGuardTest OOD set.",
+      "allow_patterns": [
+        "README.md",
+        "**/train/*.arrow",
+        "**/test/*.arrow",
+        "**/*.png",
+        "**/*.jpg",
+        "**/*.jpeg"
+      ],
+      "fields": {
+        "prompt": "prompt",
+        "responses": [
+          "response"
+        ],
+        "images": "image",
+        "metadata": [
+          "label",
+          "reason"
+        ]
+      },
+      "imports": [
+        {
+          "glob": "wildguard/*/train/*.arrow",
+          "source_config": "wildguard_{path[1]}",
+          "source_split": "train",
+          "images_required": false
+        },
+        {
+          "glob": "s_eval/*/train/*.arrow",
+          "source_config": "seval_{path[1]}",
+          "source_split": "train",
+          "images_required": false
+        },
+        {
+          "glob": "s_eval/*/test/*.arrow",
+          "source_config": "seval_{path[1]}",
+          "source_split": "test",
+          "images_required": false
+        },
+        {
+          "glob": "figstep/*/train/*.arrow",
+          "source_config": "figstep_{path[1]}",
+          "source_split": "train",
+          "images_required": true
+        },
+        {
+          "glob": "figstep/*/test/*.arrow",
+          "source_config": "figstep_{path[1]}",
+          "source_split": "test",
+          "images_required": true
+        },
+        {
+          "glob": "mmsafety/*/train/*.arrow",
+          "source_config": "mmsafety_{path[1]}",
+          "source_split": "train",
+          "images_required": true
+        },
+        {
+          "glob": "mmsafety/*/test/*.arrow",
+          "source_config": "mmsafety_{path[1]}",
+          "source_split": "test",
+          "images_required": true
+        }
+      ],
+      "ignore_patterns": [
+        "wildguard/*/test/*"
+      ]
+    }
+  ],
+  "ood": {
+    "sources": {
+      "wildguardtest": "data/raw/wildguard/test",
+      "mmsafetybench": "data/raw/mm_safetybench"
+    },
+    "output": "../probe/activations/ood",
+    "model": "/workspace/models/Qwen3.5-9B",
+    "device": "cuda:0",
+    "block_index": 14,
+    "batch_size": 8,
+    "max_new_tokens": 4096,
+    "judge_workers": 8,
+    "judge": {
+      "base_url": "https://llmapi.paratera.com/v1",
+      "model": "GLM-4.6V",
+      "api_key_env": "PARATERA_API_KEY",
+      "temperature": 0,
+      "max_tokens": 2048,
+      "timeout": 180,
+      "retries": 2,
+      "json_mode": false,
+      "extra_body": {
+        "thinking": {
+          "type": "disabled"
+        }
+      },
+      "pricing": {
+        "currency": "CNY",
+        "source": "https://docs.bigmodel.cn/cn/guide/start/pricing",
+        "checked_date": "2026-11-16",
+        "basis": "BigModel public list price; PARATERA account rate unverified (metadata HTTP403)",
+        "tiers": [
+          {
+            "input_tokens_lt": 32768,
+            "input_cny_per_million": 1,
+            "output_cny_per_million": 3,
+            "cached_input_cny_per_million": 0.2
+          },
+          {
+            "input_tokens_lt": 131072,
+            "input_cny_per_million": 2,
+            "output_cny_per_million": 6,
+            "cached_input_cny_per_million": 0.4
+          }
+        ]
+      },
+      "timeout_retries": 8,
+      "rate_limit": {
+        "requests_per_minute": 120,
+        "max_in_flight": 8
+      }
+    },
+    "cache_dtype": "bfloat16"
+  }
+}
